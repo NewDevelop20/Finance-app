@@ -2,10 +2,6 @@
 .DS_Store
 build/
 DerivedData/
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-*.xcworkspace/*
-!*.xcworkspace/contents.xcworkspacedata
 xcuserdata/
 *.xcuserstate
 *.moved-aside
@@ -15,3 +11,12 @@ xcuserdata/
 *.dSYM
 .swiftpm/
 Package.resolved
+
+# El proyecto Xcode se genera con XcodeGen a partir de project.yml (ver README),
+# así que no se versiona: cada `xcodegen generate` (local o en CI) lo recrea entero.
+FinanceTrackerApp/*.xcodeproj/
+FinanceTrackerApp/*.xcworkspace/
+FinanceTrackerApp/Info.plist
+FinanceTrackerApp/WidgetInfo.plist
+FinanceTrackerApp/*.entitlements
+FinanceTrackerApp/ExportOptions.plist

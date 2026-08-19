@@ -36,99 +36,137 @@ con Apple Pay o con el NFC del banco — ni el evento en sí, ni el importe, ni 
 comercio. Ninguna app de terceros en el App Store lo hace porque no se puede.
 
 Lo que sí es 100% viable, y es lo que monta esta app, es reducir el "voy a apuntar el
-gasto" a un solo gesto tuyo justo después de pagar:
-
-- **Botón de Acción** (iPhone 15 Pro o superior).
-- **Back Tap** (doble o triple toque en la parte trasera del iPhone).
-- **Atajo de Siri** por voz.
-- Todo dispara el mismo formulario (`AddExpenseSheet`) que ves al pulsar el "+" dentro
-  de la app.
-
-Ver la sección "Configurar el gesto rápido" más abajo.
+gasto" a un solo gesto tuyo justo después de pagar: botón de Acción, Back Tap, Siri o
+el widget de pantalla de bloqueo. Todo dispara el mismo formulario que ves al pulsar
+el "+" dentro de la app. Ver la sección 5.
 
 ---
 
+## 0. No tienes Mac (solo Android/Windows/Linux) — cómo se resuelve esto
+
+Xcode solo existe para macOS: eso no lo cambia nada de lo que hagamos. Pero **no hace
+falta que tú tengas un Mac** para compilar, firmar ni publicar esta app: cada vez que
+subes cambios a GitHub, un workflow de **GitHub Actions** arranca un Mac real (gratis,
+lo pone GitHub) y compila el proyecto ahí. Es exactamente lo que haría Xcode en tu
+mesa, solo que en la nube y sin que lo veas.
+
+Lo que **sí** necesitas de forma inevitable, porque lo exige Apple y no hay vuelta que
+darle, es:
+
+- Un **iPhone físico** para instalar y usar la app de verdad (esto no es negociable:
+  ni tu Android ni un simulador en la nube sustituyen "sentir" la app en tu mano, y
+  cosas como Back Tap, el botón de Acción o el widget de bloqueo solo existen en un
+  iPhone real).
+- Una cuenta de **Apple Developer Program** (99 €/año) en cuanto quieras instalar la
+  app en ese iPhone — no solo para publicarla en la tienda. Apple no deja instalar una
+  app nativa en un iPhone sin pasar por Xcode con un Mac físico delante (gratis, 7
+  días, requiere el Mac) **o** por TestFlight con una cuenta de pago. Como no tienes
+  Mac, el camino es TestFlight, y TestFlight exige la cuenta de pago. Es una limitación
+  de Apple, no de esta configuración.
+
+Todo lo demás — escribir código, generar el proyecto Xcode, compilarlo, archivarlo,
+firmarlo y subirlo a TestFlight — lo hace GitHub Actions por ti. Sigue leyendo.
+
 ## 1. Requisitos
 
-- Un **Mac** con **Xcode 15 o superior** (Xcode es gratis, se instala desde la Mac App
-  Store). No se puede compilar ni ejecutar esta app desde Linux/Windows.
-- Un **Apple ID** normal para probar en el simulador y firmar la app en tu propio
-  iPhone (gratis).
-- Para publicar en la App Store de verdad: una cuenta de **Apple Developer Program**
-  (99 €/año) — más detalles en la sección 7.
-- Un iPhone físico con iOS 17+ si quieres probar Back Tap, botón de Acción o
-  notificaciones exactamente como las verá el usuario final (el simulador no tiene
-  Back Tap ni botón de Acción, y las notificaciones en simulador son limitadas).
+- Una cuenta de **GitHub** (gratis) — ya la tienes, es donde vive este repo.
+- Un **Apple ID** normal (gratis) — el mismo con el que usas el iPhone sirve.
+- Un **iPhone físico** con iOS 17 o superior.
+- Cuando quieras instalarla en el iPhone o publicarla: **Apple Developer Program**
+  (99 €/año) — ver sección 3.
+- Nada de Mac, nada de Xcode instalado en ningún sitio tuyo.
 
-## 2. Crear el proyecto en Xcode e importar el código
+## 2. Compilar automáticamente (gratis, sin cuenta de pago, sin Mac)
 
-1. Abre Xcode → **File → New → Project**.
-2. Elige **iOS → App** → Next.
-3. Rellena:
-   - Product Name: `FinanceTracker`
-   - Team: tu Apple ID (Xcode → Settings → Accounts para añadirlo si no está)
-   - Organization Identifier: algo tuyo, p. ej. `com.tunombre`
-   - Interface: **SwiftUI**
-   - Storage: **SwiftData**
-   - Language: Swift
-   - Desmarca "Include Tests" si no lo quieres de momento (puedes añadirlo luego).
-4. Guarda el proyecto en una carpeta a tu elección.
-5. Xcode te crea un `FinanceTrackerApp.swift` y un `ContentView.swift` de plantilla.
-   **Bórralos** (Move to Trash) — los sustituimos por los de este repo.
-6. En el Finder, arrastra dentro del navegador de proyecto de Xcode (panel izquierdo,
-   dentro del grupo azul `FinanceTracker`) las carpetas de este repo:
-   `App/`, `Models/`, `Services/`, `Intents/`, `Views/`.
-   Al soltarlas, marca **"Copy items if needed"** y **"Create groups"**, con el target
-   `FinanceTracker` marcado como destino.
-7. Deployment target: selecciona el proyecto en el navegador → target `FinanceTracker`
-   → pestaña **General** → **Minimum Deployments** → **iOS 17.0**.
+Este paso ya está listo para funcionar en cuanto haya código en el repo: no tienes que
+tocar nada. El workflow `.github/workflows/ios-build.yml`:
 
-## 3. Capacidades e Info.plist
+1. Arranca un Mac de GitHub Actions (`macos-14`).
+2. Instala **XcodeGen** y genera el proyecto Xcode real (`FinanceTracker.xcodeproj`) a
+   partir de `project.yml` — un archivo de texto que describe los dos targets (la app y
+   la extensión del widget), sus fuentes, capacidades e Info.plist. Es el equivalente a
+   que alguien haga clic en Xcode montando el proyecto, pero como configuración
+   versionada: si algo cambia de estructura, se edita `project.yml` en vez de dar clics.
+3. Compila la app para el simulador de iOS, sin firmar (`CODE_SIGNING_ALLOWED=NO`), lo
+   cual no necesita ninguna cuenta de Apple Developer.
 
-### Background Modes (para que el resumen de las 23:00 se recalcule aunque no abras la app)
+**Cómo verlo funcionar:** en GitHub, pestaña **Actions** del repositorio → verás una
+entrada por cada push, con ✅ o ❌. Si falla, abre el log: te dirá la línea exacta y el
+error del compilador, igual que si lo vieras en Xcode. Puedes pegarme ese log y lo
+arreglamos.
 
-1. Target `FinanceTracker` → pestaña **Signing & Capabilities** → **+ Capability** →
-   **Background Modes**.
-2. Marca **Background fetch** (o "Background processing" según tu versión de Xcode;
-   `BGAppRefreshTaskRequest` usa "Background fetch").
+Esto te da, sin gastar nada ni pedir nada a Apple, la confirmación de que "el código
+compila" — el problema que tenías con el README anterior.
 
-### Registrar el identificador de la tarea en segundo plano
+## 3. Instalarla en tu iPhone vía TestFlight (necesita cuenta de pago)
 
-En `Info.plist` (o en la pestaña **Info** del target) añade:
+1. **Alta en Apple Developer Program**: https://developer.apple.com/programs/ con tu
+   Apple ID (99 €/año, verificación de identidad, puede tardar hasta 48h). Todo desde
+   el navegador, no hace falta Mac.
+2. **Apunta tu Team ID**: developer.apple.com → **Account → Membership details** →
+   copia el **Team ID** (una cadena de 10 caracteres).
+3. **Crea una clave de App Store Connect API** (esto es lo que deja que GitHub Actions
+   firme y suba builds en tu nombre, sin que tú toques ningún Mac):
+   - https://appstoreconnect.apple.com → **Users and Access → Integrations → App Store
+     Connect API → +**.
+   - Nombre: el que quieras. Acceso: **App Manager**.
+   - Descarga el archivo `AuthKey_XXXXXXXXXX.p8` **una sola vez** (Apple no te deja
+     descargarlo de nuevo después) y apunta el **Key ID** y el **Issuer ID** que se ven
+     en esa pantalla.
+4. **Configura 4 secretos en GitHub**: en el repo → **Settings → Secrets and variables
+   → Actions → New repository secret**, crea:
+   - `ASC_API_KEY_ID` → el Key ID del paso anterior.
+   - `ASC_API_ISSUER_ID` → el Issuer ID.
+   - `ASC_API_KEY_P8_BASE64` → el contenido del `.p8` en base64. En tu ordenador
+     (Windows/Linux, no hace falta Mac):
+     - Windows (PowerShell): `[Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXXXXXXXX.p8")) | Set-Clipboard`
+     - Linux/Android (Termux): `base64 -w0 AuthKey_XXXXXXXXXX.p8`
+   - `APPLE_TEAM_ID` → el Team ID del paso 2.
+5. **Registra la app en App Store Connect**: **Mis Apps → + → Nueva App** — plataforma
+   iOS, nombre, idioma principal, Bundle ID `com.tunombre.financetracker` (créalo antes
+   en developer.apple.com → **Identifiers → +** si Xcode no lo ha hecho ya por ti), SKU
+   a tu gusto. Cambia `com.tunombre` por tu propio identificador en `project.yml`
+   (busca `PRODUCT_BUNDLE_IDENTIFIER` y `application-groups`) antes de este paso.
+6. **Lanza el workflow de subida**: pestaña **Actions** del repo →
+   **"Archivar y subir a TestFlight"** → **Run workflow**. Este workflow
+   (`.github/workflows/testflight.yml`) archiva la app, la exporta y la sube a
+   TestFlight usando la clave API — el equivalente exacto a **Product → Archive →
+   Distribute App** en Xcode, pero automático.
+7. **Instálala en tu iPhone**: descarga la app **TestFlight** de la App Store (esta sí
+   la puedes instalar tú mismo, es de Apple), entra con el mismo Apple ID, y en unos
+   minutos aparecerá FinanceTracker lista para instalar y probar de verdad — Back Tap,
+   botón de Acción, widget de bloqueo y notificación de las 23:00 incluidos.
 
-```xml
-<key>BGTaskSchedulerPermittedIdentifiers</key>
-<array>
-    <string>com.financetracker.refreshSummary</string>
-</array>
-```
+Si algún paso de este workflow falla la primera vez (es habitual con la firma
+automática de Apple: a veces hay que relanzarlo una segunda vez tras crear el primer
+perfil/certificado), copia el error del log de Actions y lo resolvemos juntos.
 
-Si cambias el identificador en `BackgroundTaskManager.swift`, actualiza también este
-valor para que coincida.
+## 4. Capacidades e Info.plist
 
-### Notificaciones
+`project.yml` ya deja configurado todo esto automáticamente al generar el proyecto —
+no hay que tocar nada a mano en Xcode:
 
-No hace falta ninguna entrada especial en Info.plist para notificaciones locales; la
-app las pide en tiempo de ejecución (`NotificationManager.requestAuthorizationIfNeeded()`,
-ya está llamado desde `FinanceTrackerApp.init()`). La primera vez que abras la app en
-el dispositivo, acepta el permiso cuando te lo pida.
+- **Background Modes → Background fetch**, para que `BackgroundTaskManager` pueda
+  refrescar el resumen aunque no abras la app ese día.
+- **`BGTaskSchedulerPermittedIdentifiers`** con `com.financetracker.refreshSummary`
+  (si cambias el identificador en `BackgroundTaskManager.swift`, cámbialo también en
+  `project.yml`).
+- **App Groups** (`group.com.tunombre.financetracker`) en la app y en el widget, para
+  que compartan el gasto de hoy vía `SharedDataStore`.
+- **URL Scheme `financetracker://`**, usada por el widget en tamaño inline.
+- El **NSExtensionPointIdentifier** del widget (`com.apple.widgetkit-extension`).
 
-## 4. Ejecutar y probar
-
-1. Conecta tu iPhone por cable o Wi-Fi, o usa un simulador.
-2. Selecciona el destino (tu iPhone o un simulador) en la barra superior de Xcode.
-3. Cmd+R para compilar y ejecutar.
-4. La primera vez en un iPhone físico, ve a **Ajustes → General → VPN y gestión de
-   dispositivos** y confía en tu certificado de desarrollador si Xcode te lo pide.
-5. Prueba: añade un gasto, cierra la app, ábrela de nuevo y comprueba que la barra de
-   la semana se actualiza. Cambia la hora del resumen en Ajustes a un par de minutos
-   en el futuro para verificar que llega la notificación.
+Las notificaciones locales no necesitan ninguna entrada de Info.plist: se piden en
+tiempo de ejecución (`NotificationManager.requestAuthorizationIfNeeded()`). Acepta el
+permiso la primera vez que abras la app instalada desde TestFlight.
 
 ## 5. Configurar el gesto rápido (Atajos)
 
-1. Con la app instalada, abre la app **Atajos** (Shortcuts) de Apple.
-2. Pestaña **Galería/Automatización** no hace falta; vamos directos a un atajo nuevo:
-   pestaña **Atajos** → **+** → busca la acción **"Añadir gasto rápido"** (aparece
+Esto se hace en el iPhone, ya con la app instalada vía TestFlight — no requiere Xcode
+ni Mac en ningún momento.
+
+1. Abre la app **Atajos** (Shortcuts) de Apple.
+2. Pestaña **Atajos** → **+** → busca la acción **"Añadir gasto rápido"** (aparece
    porque `OpenQuickAddIntent` está expuesto vía `AppShortcutsProvider`). Añádela y
    guarda el atajo, p. ej. con el nombre "Apuntar gasto".
 3. **Botón de Acción** (iPhone 15 Pro/16/17 Pro): Ajustes → Botón de Acción → desliza
@@ -136,122 +174,72 @@ el dispositivo, acepta el permiso cuando te lo pida.
 4. **Back Tap** (cualquier iPhone con Touch/Face ID moderno): Ajustes →
    Accesibilidad → Tocar la parte trasera → elige **Doble toque** o **Triple toque** →
    selecciona el atajo "Apuntar gasto".
-5. **Siri**: simplemente di "Oye Siri, apuntar gasto" (o el nombre que le pusieras),
-   o usa directamente la frase integrada: "Oye Siri, añade un gasto en FinanceTracker".
+5. **Siri**: di "Oye Siri, apuntar gasto" (o el nombre que le pusieras), o usa
+   directamente la frase integrada: "Oye Siri, añade un gasto en FinanceTracker".
 6. Para el atajo por voz con datos ("Oye Siri, registra un gasto de 12 euros en
    comestibles con tarjeta"), la acción expuesta es **"Registrar gasto por voz"**
    (`LogExpenseIntent`) — Siri te irá preguntando los parámetros que falten.
 
-Con esto, justo después de pagar: pulsas el botón de Acción o el Back Tap, se abre
-FinanceTracker directamente sobre el formulario, rellenas importe y categoría en un
-par de toques, y listo.
+## 6. Activar el widget de pantalla de bloqueo
 
-## 6. Añadir el widget de pantalla de bloqueo
+El target del widget y su App Group ya vienen configurados en `project.yml` (sección
+4) — no hace falta crear ningún target a mano. Solo dos cosas antes de compilar:
 
-El widget vive en un **target nuevo** dentro del mismo proyecto de Xcode (una
-extensión), no en el target de la app. Necesita un **App Group** para leer el gasto de
-hoy que la app principal va guardando.
+1. Cambia el App Group de ejemplo `group.com.tunombre.financetracker` por el tuyo
+   propio en dos sitios: `project.yml` (dos apariciones, bajo `entitlements` de cada
+   target) y `Services/SharedDataStore.swift` (constante `appGroupID`). Debes haberlo
+   creado antes en developer.apple.com → **Identifiers → App Groups → +**.
+2. Vuelve a lanzar el workflow correspondiente (sección 2 o 3) para que se recompile
+   con el App Group correcto.
 
-### 6.1 Crear el App Group
-
-1. En https://developer.apple.com/account → **Certificates, Identifiers & Profiles →
-   Identifiers → App Groups → +**, crea uno con un identificador del tipo
-   `group.com.tunombre.financetracker` (usa tu propio dominio inverso, coherente con
-   el Bundle Identifier que elijas en la sección 7).
-2. Abre `Services/SharedDataStore.swift` en el proyecto y cambia la constante
-   `appGroupID` por el identificador exacto que acabas de crear.
-
-### 6.2 Crear el target de la extensión
-
-1. En Xcode: **File → New → Target… → Widget Extension**.
-2. Nombre: `FinanceTrackerWidget`. Desmarca **"Include Live Activity"** (no la
-   usamos). Deja marcado que se añada al esquema de la app.
-3. Xcode crea una carpeta `FinanceTrackerWidget/` con un `.swift` de plantilla y su
-   propio `Info.plist`. **Borra el `.swift` de plantilla** que trae por defecto.
-4. Arrastra la carpeta `Widgets/` de este repo al grupo `FinanceTrackerWidget` del
-   navegador de Xcode (Copy items if needed, target `FinanceTrackerWidget` marcado).
-
-### 6.3 Target Membership de los archivos compartidos
-
-El widget necesita algunos archivos que ya existen en el target de la app, pero **sin
-arrastrar de más**: solo los que no dependen de SwiftData. Para cada uno, selecciónalo
-en el navegador de Xcode y en el panel derecho (**File Inspector → Target
-Membership**) marca también la casilla `FinanceTrackerWidget`:
-
-- `Models/Enums.swift`
-- `App/AppState.swift`
-- `Intents/QuickAddIntents.swift`
-- `Services/SharedDataStore.swift`
-
-No añadas `Intents/LogExpenseIntent.swift`, `Models/ExpenseEntry.swift`,
-`Models/BudgetSettings.swift` ni el resto de `Services/` al target del widget: usan
-SwiftData/BackgroundTasks y el widget no los necesita (ni debe enlazarlos).
-
-### 6.4 App Groups en Signing & Capabilities de los dos targets
-
-1. Target `FinanceTracker` → **Signing & Capabilities → + Capability → App Groups** →
-   marca (o añade) el mismo `group.com.tunombre.financetracker`.
-2. Target `FinanceTrackerWidget` → repite el mismo paso con el mismo grupo.
-
-### 6.5 URL scheme para el tamaño "inline"
-
-El tamaño inline del widget no admite botones interactivos (limitación de Apple), así
-que abre la app con una URL y la app termina de abrir el formulario
-(`FinanceTrackerApp.onOpenURL`, ya incluido). Regístrala en el target
-`FinanceTracker` → pestaña **Info** → **URL Types → +**:
-
-- Identifier: `com.tunombre.financetracker.quickadd`
-- URL Schemes: `financetracker`
-
-### 6.6 Probarlo
-
-1. Compila y ejecuta primero el esquema `FinanceTracker` (la app) al menos una vez,
-   para que guarde datos en el App Group.
-2. Cambia el esquema activo en Xcode a `FinanceTrackerWidget` y ejecuta: te deja elegir
-   la familia (circular/rectangular/inline) y lo ves en una vista previa de la pantalla
-   de bloqueo.
-3. En el iPhone real: bloquea la pantalla → mantén pulsado → **Personalizar → Bloqueo**
-   → toca los widgets bajo la hora → **+** → busca "FinanceTracker" → elige el tamaño
-   → **Listo**.
-4. Toca el widget: debe abrir la app directamente sobre el formulario de añadir gasto.
+Para añadirlo en el iPhone: bloquea la pantalla → mantén pulsado → **Personalizar →
+Bloqueo** → toca los widgets bajo la hora → **+** → busca "FinanceTracker" → elige el
+tamaño (circular, rectangular o inline) → **Listo**. Tócalo: debe abrir la app
+directamente sobre el formulario de añadir gasto.
 
 ## 7. Publicar en la App Store (la parte de aprender el proceso)
 
-1. **Apple Developer Program**: entra en https://developer.apple.com/programs/ con tu
-   Apple ID y date de alta (99 €/año, requiere verificación de identidad y puede tardar
-   hasta 48h).
-2. **Bundle Identifier definitivo**: decide uno único, p. ej. `com.tunombre.financetracker`,
-   y ponlo en el target → **Signing & Capabilities** → Bundle Identifier.
-3. **App Store Connect** (https://appstoreconnect.apple.com):
-   - **Mis Apps → +  → Nueva App**.
-   - Plataforma iOS, nombre visible en la tienda, idioma principal, Bundle ID (el
-     mismo de arriba — Xcode lo registra automáticamente la primera vez que archivas
-     o puedes crearlo a mano en developer.apple.com → Certificates, IDs & Profiles).
-   - SKU: un identificador interno tuyo, p. ej. `financetracker001`.
-4. **Ficha de la App Store**: descripción, capturas de pantalla (puedes generarlas
-   desde el simulador con Cmd+S), icono de 1024×1024, categoría (Finanzas), y la
-   **App Privacy** (nutrition label): como todos los datos se quedan en el dispositivo
-   (SwiftData local, sin backend ni analíticas), declaras que **no se recopilan datos**.
-5. **Archivar y subir el binario**:
-   - En Xcode, selecciona destino **Any iOS Device (arm64)**.
-   - **Product → Archive**.
-   - En el Organizer que se abre, **Distribute App → App Store Connect → Upload**.
-   - Xcode gestiona la firma automática si tienes "Automatically manage signing"
-     activado en Signing & Capabilities (recomendado para empezar).
-6. **TestFlight**: en App Store Connect, la build subida aparece primero en
-   TestFlight. Puedes probarla tú mismo instalando la app TestFlight en tu iPhone e
-   invitándote como tester interno — así pruebas exactamente el binario que vas a
-   enviar a revisión, con notificaciones y Atajos reales.
-7. **Enviar a revisión**: en la ficha de la app, sección **Preparar para envío**,
-   asocia la build de TestFlight, rellena información de contacto y revisión, y pulsa
-   **Enviar para revisión**. Apple suele tardar entre 24h y unos pocos días.
-8. **Motivos típicos de rechazo** a vigilar en una app así: capturas de pantalla que no
+Una vez que ya has probado la app en TestFlight (sección 3) y estás contento con ella:
+
+1. **Ficha de la App Store**: en App Store Connect, sobre la misma app que creaste en
+   la sección 3, rellena descripción, capturas de pantalla (puedes generarlas desde
+   TestFlight en tu iPhone con captura de pantalla normal), icono de 1024×1024,
+   categoría (Finanzas), y la **App Privacy** (nutrition label): como todos los datos
+   se quedan en el dispositivo (SwiftData local, sin backend ni analíticas), declaras
+   que **no se recopilan datos**.
+2. **Asocia la build**: en la sección "Preparar para envío", elige la build que ya
+   subiste a TestFlight con el workflow.
+3. **Enviar a revisión**: rellena información de contacto y notas para el revisor, y
+   pulsa **Enviar para revisión**. Apple suele tardar entre 24h y unos pocos días.
+4. **Motivos típicos de rechazo** a vigilar en una app así: capturas de pantalla que no
    reflejan la app real, metadatos incompletos, y — importante para esta app — no
    afirmes en la descripción nada tipo "detecta automáticamente tus pagos con
    tarjeta", porque no es cierto y Apple lo puede rechazar por publicidad engañosa;
    describe el gesto rápido tal cual es.
 
-## 8. Ideas para ampliar más adelante
+Cada nueva versión que quieras subir: cambia el `CFBundleShortVersionString` /
+`CURRENT_PROJECT_VERSION` que quieras en `project.yml`, haz push, y vuelve a lanzar el
+workflow "Archivar y subir a TestFlight" (sección 3, paso 6).
+
+## 8. Si en algún momento consigues acceso a un Mac
+
+Todo lo anterior sigue funcionando igual (GitHub Actions no deja de ser útil por tener
+Mac), pero si quieres además abrir el proyecto en Xcode con interfaz gráfica —
+depurar con breakpoints, usar el editor visual de SwiftUI, etc. — o alquilar un Mac por
+horas (MacinCloud y similares, desde ~1 $/hora, te conectas por escritorio remoto
+desde el propio Android):
+
+1. Instala Xcode (gratis, App Store) y **XcodeGen** (`brew install xcodegen`).
+2. Desde `FinanceTrackerApp/`, ejecuta `xcodegen generate` — genera
+   `FinanceTracker.xcodeproj` localmente, idéntico al que genera CI.
+3. Ábrelo con `open FinanceTracker.xcodeproj`.
+4. En el target `FinanceTracker` → **Signing & Capabilities**, cambia el **Team** a tu
+   Apple ID para poder ejecutar en un iPhone conectado por cable.
+
+No hace falta crear el proyecto a mano ni arrastrar carpetas: `project.yml` es la
+única fuente de verdad, tanto si lo genera CI como si lo generas tú en un Mac.
+
+## 9. Ideas para ampliar más adelante
 
 - **Widget en Control Center** (iOS 18+, `ControlWidget` en el mismo target de
   extensión) para añadir un gasto con un toque desde el Centro de Control.

@@ -1,0 +1,37 @@
+name: iOS build check
+
+# Compila la app (sin firmar, para simulador) en un Mac que GitHub presta gratis.
+# Es la forma de comprobar que el código compila sin tener un Mac propio: cada push
+# a cualquier rama, o cada Pull Request, dispara este workflow. Revisa la pestaña
+# "Actions" del repo para ver el resultado (✅ o ❌ con el log de errores).
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mostrar versión de Xcode disponible
+        run: xcodebuild -version
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar el proyecto Xcode desde project.yml
+        working-directory: FinanceTrackerApp
+        run: xcodegen generate
+
+      - name: Compilar para iOS Simulator (sin firma)
+        working-directory: FinanceTrackerApp
+        run: |
+          xcodebuild build \
+            -project FinanceTracker.xcodeproj \
+            -scheme FinanceTracker \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO

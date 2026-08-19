@@ -1,0 +1,87 @@
+name: FinanceTracker
+options:
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  # No usamos aún un equipo de Apple Developer real: esto permite que el build de
+  # validación (sin firma) funcione en CI sin ningún secreto configurado.
+  developmentLanguage: es
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    # Cámbialo por tu Team ID cuando tengas cuenta de Apple Developer (sección 7 del README).
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  FinanceTracker:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Models
+      - path: Services
+      - path: Intents
+      - path: Views
+    entitlements:
+      path: FinanceTracker.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.tunombre.financetracker
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.financetracker.refreshSummary
+        CFBundleURLTypes:
+          - CFBundleURLName: com.tunombre.financetracker.quickadd
+            CFBundleURLSchemes:
+              - financetracker
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tunombre.financetracker
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - target: FinanceTrackerWidgetExtension
+        embed: true
+
+  FinanceTrackerWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Models/Enums.swift
+      - path: App/AppState.swift
+      - path: Intents/QuickAddIntents.swift
+      - path: Services/SharedDataStore.swift
+    entitlements:
+      path: FinanceTrackerWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.tunombre.financetracker
+    info:
+      path: WidgetInfo.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tunombre.financetracker.widget
+        TARGETED_DEVICE_FAMILY: "1"
+
+schemes:
+  FinanceTracker:
+    build:
+      targets:
+        FinanceTracker: all
+        FinanceTrackerWidgetExtension: all
+    run:
+      config: Debug
+    archive:
+      config: Release

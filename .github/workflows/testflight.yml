@@ -1,0 +1,105 @@
+name: Archivar y subir a TestFlight
+
+# Manual a propósito (workflow_dispatch): lo lanzas tú desde la pestaña "Actions" del
+# repo cuando quieras publicar una build de prueba. Necesita 4 secretos configurados
+# en Settings → Secrets and variables → Actions del repositorio (ver README, sección
+# 3 "Instalarla en tu iPhone vía TestFlight"):
+#   ASC_API_KEY_ID        → el Key ID de tu clave de App Store Connect API
+#   ASC_API_ISSUER_ID     → el Issuer ID de esa misma clave
+#   ASC_API_KEY_P8_BASE64 → el contenido del archivo AuthKey_XXXX.p8, en base64
+#   APPLE_TEAM_ID         → tu Team ID de developer.apple.com (Membership)
+#
+# Sin esos secretos configurados este workflow falla a propósito en el primer paso,
+# con un mensaje explicando qué falta — no hace falta ningún Mac para generarlos, todo
+# se saca de la web de Apple Developer / App Store Connect.
+on:
+  workflow_dispatch:
+
+jobs:
+  archive-and-upload:
+    runs-on: macos-14
+    env:
+      ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+      ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+      ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - name: Comprobar que están los secretos necesarios
+        run: |
+          missing=0
+          for var in ASC_API_KEY_ID ASC_API_ISSUER_ID ASC_API_KEY_P8_BASE64 APPLE_TEAM_ID; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Falta el secreto $var. Configúralo en Settings → Secrets and variables → Actions."
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then exit 1; fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar el proyecto Xcode desde project.yml
+        working-directory: FinanceTrackerApp
+        run: xcodegen generate
+
+      - name: Preparar la clave de App Store Connect API
+        run: |
+          mkdir -p ~/private_keys
+          echo "$ASC_API_KEY_P8_BASE64" | base64 --decode > ~/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+
+      - name: Archivar (Product → Archive, pero en CI)
+        working-directory: FinanceTrackerApp
+        run: |
+          xcodebuild archive \
+            -project FinanceTracker.xcodeproj \
+            -scheme FinanceTracker \
+            -configuration Release \
+            -archivePath build/FinanceTracker.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_API_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_API_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_API_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+
+      - name: Crear ExportOptions.plist
+        working-directory: FinanceTrackerApp
+        run: |
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${APPLE_TEAM_ID}</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Exportar el .ipa
+        working-directory: FinanceTrackerApp
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/FinanceTracker.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${ASC_API_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_API_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_API_ISSUER_ID"
+
+      - name: Subir a App Store Connect / TestFlight
+        working-directory: FinanceTrackerApp
+        run: |
+          xcrun altool --upload-app \
+            -f build/export/FinanceTracker.ipa \
+            -t ios \
+            --apiKey "$ASC_API_KEY_ID" \
+            --apiIssuer "$ASC_API_ISSUER_ID"
