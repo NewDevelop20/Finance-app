@@ -2,37 +2,10 @@ import AppIntents
 import SwiftData
 import Foundation
 
-/// Abre la app directamente sobre el menú de "añadir gasto", sin pedir ningún dato.
-/// Este es el intent pensado para asignar al botón de Acción o a un gesto de Back Tap
-/// (Ajustes > Accesibilidad > Tocar la parte trasera > elige un Atajo que ejecute esto):
-/// un solo toque/gesto y tienes el formulario delante, listo para rellenar en 5 segundos.
-struct OpenQuickAddIntent: AppIntent {
-    static var title: LocalizedStringResource = "Añadir gasto rápido"
-    static var description = IntentDescription("Abre FinanceTracker directamente sobre el formulario de añadir movimiento.")
-    static var openAppWhenRun: Bool = true
-
-    @MainActor
-    func perform() async throws -> some IntentResult {
-        AppState.shared.requestQuickAdd()
-        return .result()
-    }
-}
-
-/// Variante para cuando pagas en efectivo: abre el mismo menú pero con "Efectivo"
-/// como método de pago ya preseleccionado.
-struct OpenQuickAddCashIntent: AppIntent {
-    static var title: LocalizedStringResource = "Añadir gasto en efectivo"
-    static var openAppWhenRun: Bool = true
-
-    @MainActor
-    func perform() async throws -> some IntentResult {
-        AppState.shared.requestQuickAdd(type: .gasto)
-        return .result()
-    }
-}
-
 /// Registra el movimiento sin abrir ninguna pantalla — pensado para decirlo por voz:
-/// "Oye Siri, añade 12 euros de comestibles con tarjeta".
+/// "Oye Siri, añade 12 euros de comestibles con tarjeta". Toca SwiftData directamente,
+/// así que este archivo se queda solo en el target principal de la app (no en el
+/// target del widget).
 struct LogExpenseIntent: AppIntent {
     static var title: LocalizedStringResource = "Registrar gasto por voz"
     static var description = IntentDescription("Registra un movimiento directamente, sin abrir la app.")

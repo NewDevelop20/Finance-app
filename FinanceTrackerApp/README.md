@@ -23,8 +23,11 @@ noche a las 23:00.
   de la semana (lunes-domingo) y si vas dentro o fuera de presupuesto, y cuánto te
   queda. Se recalcula cada vez que añades un movimiento y cada vez que abres la app.
 - **Acceso rápido por gesto** (en vez de detección automática de pagos — ver más abajo):
-  dos App Intents (`OpenQuickAddIntent`, `LogExpenseIntent`) pensados para colgar del
-  botón de Acción, de un gesto Back Tap, de Siri o de la pantalla de bloqueo.
+  App Intents (`OpenQuickAddIntent`, `OpenQuickAddCashIntent`, `LogExpenseIntent`)
+  pensados para colgar del botón de Acción, de un gesto Back Tap o de Siri.
+- **Widget de pantalla de bloqueo**: en tamaño circular y rectangular es un botón que
+  abre el formulario de alta al instante (y el rectangular enseña el gasto de hoy); en
+  tamaño inline enseña el gasto de hoy y, al tocarlo, abre el mismo formulario.
 
 ## Por qué no hay "detección automática" del pago con tarjeta
 
@@ -52,7 +55,7 @@ Ver la sección "Configurar el gesto rápido" más abajo.
 - Un **Apple ID** normal para probar en el simulador y firmar la app en tu propio
   iPhone (gratis).
 - Para publicar en la App Store de verdad: una cuenta de **Apple Developer Program**
-  (99 €/año) — más detalles en la sección 4.
+  (99 €/año) — más detalles en la sección 7.
 - Un iPhone físico con iOS 17+ si quieres probar Back Tap, botón de Acción o
   notificaciones exactamente como las verá el usuario final (el simulador no tiene
   Back Tap ni botón de Acción, y las notificaciones en simulador son limitadas).
@@ -143,7 +146,76 @@ Con esto, justo después de pagar: pulsas el botón de Acción o el Back Tap, se
 FinanceTracker directamente sobre el formulario, rellenas importe y categoría en un
 par de toques, y listo.
 
-## 6. Publicar en la App Store (la parte de aprender el proceso)
+## 6. Añadir el widget de pantalla de bloqueo
+
+El widget vive en un **target nuevo** dentro del mismo proyecto de Xcode (una
+extensión), no en el target de la app. Necesita un **App Group** para leer el gasto de
+hoy que la app principal va guardando.
+
+### 6.1 Crear el App Group
+
+1. En https://developer.apple.com/account → **Certificates, Identifiers & Profiles →
+   Identifiers → App Groups → +**, crea uno con un identificador del tipo
+   `group.com.tunombre.financetracker` (usa tu propio dominio inverso, coherente con
+   el Bundle Identifier que elijas en la sección 7).
+2. Abre `Services/SharedDataStore.swift` en el proyecto y cambia la constante
+   `appGroupID` por el identificador exacto que acabas de crear.
+
+### 6.2 Crear el target de la extensión
+
+1. En Xcode: **File → New → Target… → Widget Extension**.
+2. Nombre: `FinanceTrackerWidget`. Desmarca **"Include Live Activity"** (no la
+   usamos). Deja marcado que se añada al esquema de la app.
+3. Xcode crea una carpeta `FinanceTrackerWidget/` con un `.swift` de plantilla y su
+   propio `Info.plist`. **Borra el `.swift` de plantilla** que trae por defecto.
+4. Arrastra la carpeta `Widgets/` de este repo al grupo `FinanceTrackerWidget` del
+   navegador de Xcode (Copy items if needed, target `FinanceTrackerWidget` marcado).
+
+### 6.3 Target Membership de los archivos compartidos
+
+El widget necesita algunos archivos que ya existen en el target de la app, pero **sin
+arrastrar de más**: solo los que no dependen de SwiftData. Para cada uno, selecciónalo
+en el navegador de Xcode y en el panel derecho (**File Inspector → Target
+Membership**) marca también la casilla `FinanceTrackerWidget`:
+
+- `Models/Enums.swift`
+- `App/AppState.swift`
+- `Intents/QuickAddIntents.swift`
+- `Services/SharedDataStore.swift`
+
+No añadas `Intents/LogExpenseIntent.swift`, `Models/ExpenseEntry.swift`,
+`Models/BudgetSettings.swift` ni el resto de `Services/` al target del widget: usan
+SwiftData/BackgroundTasks y el widget no los necesita (ni debe enlazarlos).
+
+### 6.4 App Groups en Signing & Capabilities de los dos targets
+
+1. Target `FinanceTracker` → **Signing & Capabilities → + Capability → App Groups** →
+   marca (o añade) el mismo `group.com.tunombre.financetracker`.
+2. Target `FinanceTrackerWidget` → repite el mismo paso con el mismo grupo.
+
+### 6.5 URL scheme para el tamaño "inline"
+
+El tamaño inline del widget no admite botones interactivos (limitación de Apple), así
+que abre la app con una URL y la app termina de abrir el formulario
+(`FinanceTrackerApp.onOpenURL`, ya incluido). Regístrala en el target
+`FinanceTracker` → pestaña **Info** → **URL Types → +**:
+
+- Identifier: `com.tunombre.financetracker.quickadd`
+- URL Schemes: `financetracker`
+
+### 6.6 Probarlo
+
+1. Compila y ejecuta primero el esquema `FinanceTracker` (la app) al menos una vez,
+   para que guarde datos en el App Group.
+2. Cambia el esquema activo en Xcode a `FinanceTrackerWidget` y ejecuta: te deja elegir
+   la familia (circular/rectangular/inline) y lo ves en una vista previa de la pantalla
+   de bloqueo.
+3. En el iPhone real: bloquea la pantalla → mantén pulsado → **Personalizar → Bloqueo**
+   → toca los widgets bajo la hora → **+** → busca "FinanceTracker" → elige el tamaño
+   → **Listo**.
+4. Toca el widget: debe abrir la app directamente sobre el formulario de añadir gasto.
+
+## 7. Publicar en la App Store (la parte de aprender el proceso)
 
 1. **Apple Developer Program**: entra en https://developer.apple.com/programs/ con tu
    Apple ID y date de alta (99 €/año, requiere verificación de identidad y puede tardar
@@ -179,10 +251,10 @@ par de toques, y listo.
    tarjeta", porque no es cierto y Apple lo puede rechazar por publicidad engañosa;
    describe el gesto rápido tal cual es.
 
-## 7. Ideas para ampliar más adelante
+## 8. Ideas para ampliar más adelante
 
-- **Widget de bloqueo / Control Center** (target de extensión WidgetKit) para añadir un
-  gasto con un toque sin ni siquiera abrir Atajos.
+- **Widget en Control Center** (iOS 18+, `ControlWidget` en el mismo target de
+  extensión) para añadir un gasto con un toque desde el Centro de Control.
 - **Sincronización con iCloud** activando CloudKit en el `ModelContainer` de SwiftData,
   para tener los gastos en varios dispositivos.
 - **Exportar a CSV/Excel** desde Historial.

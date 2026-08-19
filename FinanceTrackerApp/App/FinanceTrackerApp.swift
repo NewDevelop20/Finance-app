@@ -22,6 +22,13 @@ struct FinanceTrackerApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .onOpenURL { url in
+                    // Disparado por el widget de pantalla de bloqueo en tamaño "inline"
+                    // (financetracker://quickadd), que no admite botones interactivos.
+                    if url.host == "quickadd" {
+                        appState.requestQuickAdd()
+                    }
+                }
         }
         .modelContainer(container)
         .onChange(of: scenePhase) { _, newPhase in

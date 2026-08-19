@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 import SwiftData
+import WidgetKit
 
 /// Programa y refresca la notificación diaria de resumen ("cuánto llevas gastado hoy
 /// y en la semana"). Como el contenido depende de datos que cambian a lo largo del día,
@@ -35,6 +36,14 @@ enum NotificationManager {
 
         let allEntries = (try? context.fetch(FetchDescriptor<ExpenseEntry>())) ?? []
         let summary = BudgetCalculator.summary(all: allEntries, settings: settings)
+
+        SharedDataStore.save(
+            todayTotal: summary.todayTotal,
+            weekTotal: summary.weekTotal,
+            weekBudget: summary.weekBudget,
+            isOverBudget: summary.isOverBudget
+        )
+        WidgetCenter.shared.reloadAllTimelines()
 
         let content = UNMutableNotificationContent()
         content.title = "Resumen del día"
