@@ -17,7 +17,7 @@ on:
 
 jobs:
   archive-and-upload:
-    runs-on: macos-14
+    runs-on: macos-latest
     env:
       ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
       ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
@@ -37,6 +37,19 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Seleccionar la versión de Xcode más reciente del runner
+        # XcodeGen (Homebrew instala siempre la versión más reciente) puede generar el
+        # proyecto en un formato más nuevo del que entiende el Xcode que el runner
+        # tiene seleccionado por defecto ("cannot be opened because it is in a future
+        # Xcode project file format"). Forzamos la versión de Xcode más nueva instalada
+        # en la imagen para evitar ese desajuste.
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$LATEST_XCODE" ]; then
+            sudo xcode-select -s "$LATEST_XCODE"
+          fi
+          xcodebuild -version
 
       - name: Instalar XcodeGen
         run: brew install xcodegen
