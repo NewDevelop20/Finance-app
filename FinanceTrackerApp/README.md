@@ -38,43 +38,48 @@ comercio. Ninguna app de terceros en el App Store lo hace porque no se puede.
 Lo que sí es 100% viable, y es lo que monta esta app, es reducir el "voy a apuntar el
 gasto" a un solo gesto tuyo justo después de pagar: botón de Acción, Back Tap, Siri o
 el widget de pantalla de bloqueo. Todo dispara el mismo formulario que ves al pulsar
-el "+" dentro de la app. Ver la sección 5.
+el "+" dentro de la app. Ver la sección 6.
 
 ---
 
 ## 0. No tienes Mac (solo Android/Windows/Linux) — cómo se resuelve esto
 
 Xcode solo existe para macOS: eso no lo cambia nada de lo que hagamos. Pero **no hace
-falta que tú tengas un Mac** para compilar, firmar ni publicar esta app: cada vez que
+falta que tú tengas un Mac** para compilar, firmar ni instalar esta app: cada vez que
 subes cambios a GitHub, un workflow de **GitHub Actions** arranca un Mac real (gratis,
 lo pone GitHub) y compila el proyecto ahí. Es exactamente lo que haría Xcode en tu
 mesa, solo que en la nube y sin que lo veas.
 
-Lo que **sí** necesitas de forma inevitable, porque lo exige Apple y no hay vuelta que
-darle, es:
+Lo único que sí necesitas de forma inevitable es un **iPhone físico** para instalar y
+usar la app de verdad — ni tu Android ni un simulador en la nube sustituyen eso, y
+cosas como Back Tap, el botón de Acción o el widget de bloqueo solo existen en un
+iPhone real.
 
-- Un **iPhone físico** para instalar y usar la app de verdad (esto no es negociable:
-  ni tu Android ni un simulador en la nube sustituyen "sentir" la app en tu mano, y
-  cosas como Back Tap, el botón de Acción o el widget de bloqueo solo existen en un
-  iPhone real).
-- Una cuenta de **Apple Developer Program** (99 €/año) en cuanto quieras instalar la
-  app en ese iPhone — no solo para publicarla en la tienda. Apple no deja instalar una
-  app nativa en un iPhone sin pasar por Xcode con un Mac físico delante (gratis, 7
-  días, requiere el Mac) **o** por TestFlight con una cuenta de pago. Como no tienes
-  Mac, el camino es TestFlight, y TestFlight exige la cuenta de pago. Es una limitación
-  de Apple, no de esta configuración.
+**¿Y la cuenta de pago de Apple (99 €/año)?** Aquí hay dos caminos distintos, según lo
+que quieras hacer, y solo uno de ellos la exige:
 
-Todo lo demás — escribir código, generar el proyecto Xcode, compilarlo, archivarlo,
-firmarlo y subirlo a TestFlight — lo hace GitHub Actions por ti. Sigue leyendo.
+| Quiero...                                                    | ¿Cuenta de pago? | Sección |
+|---------------------------------------------------------------|:---:|:---:|
+| Solo comprobar que el código compila                          | No  | 2 |
+| Instalarla en mi iPhone para usarla yo (sideloading)           | **No** | 3 |
+| Instalarla en mi iPhone vía TestFlight (más cómodo, sin caducar cada 7 días) | Sí | 4 |
+| Publicarla de verdad en la App Store para que la baje cualquiera | Sí, sin excepción | 8 |
+
+Es decir: puedes tener la app funcionando en tu iPhone, con notificaciones, widget y
+gestos, **sin pagar nada a Apple**, usando sideloading (sección 3). Lo único que Apple
+no deja hacer gratis bajo ningún concepto es meterla en la App Store para que la
+descargue otra gente — eso, cuando llegue el momento, sí exige los 99 €/año.
 
 ## 1. Requisitos
 
 - Una cuenta de **GitHub** (gratis) — ya la tienes, es donde vive este repo.
 - Un **Apple ID** normal (gratis) — el mismo con el que usas el iPhone sirve.
 - Un **iPhone físico** con iOS 17 o superior.
-- Cuando quieras instalarla en el iPhone o publicarla: **Apple Developer Program**
-  (99 €/año) — ver sección 3.
-- Nada de Mac, nada de Xcode instalado en ningún sitio tuyo.
+- Un ordenador (Windows, Linux o Mac, da igual) solo para ejecutar **AltServer**
+  puntualmente si eliges la vía gratuita (sección 3) — no necesita ser tuyo ni potente,
+  hasta un Windows viejo vale.
+- Solo si más adelante quieres publicar en la App Store: **Apple Developer Program**
+  (99 €/año) — ver sección 8.
 
 ## 2. Compilar automáticamente (gratis, sin cuenta de pago, sin Mac)
 
@@ -95,10 +100,61 @@ entrada por cada push, con ✅ o ❌. Si falla, abre el log: te dirá la línea 
 error del compilador, igual que si lo vieras en Xcode. Puedes pegarme ese log y lo
 arreglamos.
 
-Esto te da, sin gastar nada ni pedir nada a Apple, la confirmación de que "el código
-compila" — el problema que tenías con el README anterior.
+## 3. Instalarla gratis en tu iPhone (sideloading, sin cuenta de pago)
 
-## 3. Instalarla en tu iPhone vía TestFlight (necesita cuenta de pago)
+Apple permite firmar apps para tu propio dispositivo con un Apple ID normal y gratis
+— es el mecanismo que usa cualquier desarrollador para probar antes de pagar. Sin Mac
+no puedes hacerlo con Xcode directamente, pero herramientas como
+**[AltStore](https://altstore.io)** o **[SideStore](https://sidestore.io)** hacen esa
+misma firma gratuita por ti, hablando con los servidores de Apple con las mismas APIs
+que usaría Xcode, sin que haga falta Xcode ni Mac. Es legal y es exactamente para esto
+para lo que Apple ofrece la firma gratuita.
+
+Las contras, para que sepas dónde te metes: el certificado gratuito caduca cada **7
+días** (AltServer/SideStore la vuelven a firmar solas si mantienes el proceso
+disponible en tu red o activas el "refresco en segundo plano" de SideStore — si no, te
+tocará reinstalar cada semana), y con un Apple ID gratis solo puedes tener **3 apps**
+firmadas así a la vez. Para un proyecto personal en el que estás aprendiendo, es un
+intercambio razonable.
+
+### 3.1 Generar el `.ipa` sin firmar
+
+1. En GitHub, pestaña **Actions** → workflow **"Generar .ipa para sideload"** → **Run
+   workflow** (lo lanzas tú manualmente, no hace falta cada vez que subas un cambio).
+2. Cuando termine (✅), entra en esa ejecución y baja hasta **Artifacts** →
+   descarga `FinanceTracker-sin-firmar` (es un .zip que contiene el `.ipa`).
+
+### 3.2 Instalar AltStore/SideStore
+
+1. En tu ordenador (Windows o Linux, no hace falta que sea potente ni tuyo): instala
+   **AltServer** desde https://altstore.io. Necesita que instales también iTunes en
+   Windows (o `usbmuxd` en Linux) para que reconozca el iPhone por cable/wifi.
+2. Conecta el iPhone, abre AltServer, inicia sesión con tu Apple ID (gratis, no hace
+   falta Developer Program), y desde el icono de AltServer en la bandeja del sistema:
+   **Install AltStore → (tu iPhone)**.
+3. En el iPhone: **Ajustes → General → VPN y gestión de dispositivos** → confía en tu
+   Apple ID como desarrollador (una vez).
+4. Abre la app **AltStore** ya instalada en el iPhone → pestaña **My Apps** → **+** →
+   elige el `FinanceTracker.ipa` que descargaste en 3.1 (pásalo al iPhone por AirDrop,
+   cable, o ábrelo directamente desde el Finder/explorador si AltServer sigue activo en
+   el ordenador). AltStore lo firma con tu Apple ID gratis y lo instala.
+
+Si prefieres no depender de un ordenador cada semana, una vez tengas AltStore
+instalado puedes migrar a **SideStore**, que puede refrescar la firma sola sin volver a
+conectar por cable (usa una VPN local en el propio iPhone) — su web trae la guía
+actualizada, cambia con cada versión de iOS.
+
+> Nota si estás en la Unión Europea: desde iOS 17.4, Apple está obligada a permitir
+> "mercados alternativos" en la UE, y AltStore ya tiene una versión (**AltStore PAL**)
+> instalable directamente desde Safari en el iPhone sin pasar por un ordenador en
+> absoluto. Es más nuevo y cambia rápido — mira altstore.io por si ya te sirve
+> directamente esa vía, aún más simple que lo de arriba.
+
+## 4. Instalarla en tu iPhone vía TestFlight (con cuenta de pago)
+
+Alternativa más cómoda al sideloading: no caduca cada 7 días, no necesitas un
+ordenador con AltServer, y es el mismo mecanismo que usan las apps reales en fase de
+pruebas. A cambio, exige la cuenta de pago.
 
 1. **Alta en Apple Developer Program**: https://developer.apple.com/programs/ con tu
    Apple ID (99 €/año, verificación de identidad, puede tardar hasta 48h). Todo desde
@@ -132,16 +188,15 @@ compila" — el problema que tenías con el README anterior.
    (`.github/workflows/testflight.yml`) archiva la app, la exporta y la sube a
    TestFlight usando la clave API — el equivalente exacto a **Product → Archive →
    Distribute App** en Xcode, pero automático.
-7. **Instálala en tu iPhone**: descarga la app **TestFlight** de la App Store (esta sí
-   la puedes instalar tú mismo, es de Apple), entra con el mismo Apple ID, y en unos
-   minutos aparecerá FinanceTracker lista para instalar y probar de verdad — Back Tap,
-   botón de Acción, widget de bloqueo y notificación de las 23:00 incluidos.
+7. **Instálala en tu iPhone**: descarga la app **TestFlight** de la App Store, entra
+   con el mismo Apple ID, y en unos minutos aparecerá FinanceTracker lista para
+   instalar y probar de verdad.
 
 Si algún paso de este workflow falla la primera vez (es habitual con la firma
 automática de Apple: a veces hay que relanzarlo una segunda vez tras crear el primer
 perfil/certificado), copia el error del log de Actions y lo resolvemos juntos.
 
-## 4. Capacidades e Info.plist
+## 5. Capacidades e Info.plist
 
 `project.yml` ya deja configurado todo esto automáticamente al generar el proyecto —
 no hay que tocar nada a mano en Xcode:
@@ -158,12 +213,12 @@ no hay que tocar nada a mano en Xcode:
 
 Las notificaciones locales no necesitan ninguna entrada de Info.plist: se piden en
 tiempo de ejecución (`NotificationManager.requestAuthorizationIfNeeded()`). Acepta el
-permiso la primera vez que abras la app instalada desde TestFlight.
+permiso la primera vez que abras la app instalada.
 
-## 5. Configurar el gesto rápido (Atajos)
+## 6. Configurar el gesto rápido (Atajos)
 
-Esto se hace en el iPhone, ya con la app instalada vía TestFlight — no requiere Xcode
-ni Mac en ningún momento.
+Esto se hace en el iPhone, ya con la app instalada (por sideloading o TestFlight) — no
+requiere Xcode ni Mac en ningún momento.
 
 1. Abre la app **Atajos** (Shortcuts) de Apple.
 2. Pestaña **Atajos** → **+** → busca la acción **"Añadir gasto rápido"** (aparece
@@ -180,30 +235,40 @@ ni Mac en ningún momento.
    comestibles con tarjeta"), la acción expuesta es **"Registrar gasto por voz"**
    (`LogExpenseIntent`) — Siri te irá preguntando los parámetros que falten.
 
-## 6. Activar el widget de pantalla de bloqueo
+## 7. Activar el widget de pantalla de bloqueo
 
 El target del widget y su App Group ya vienen configurados en `project.yml` (sección
-4) — no hace falta crear ningún target a mano. Solo dos cosas antes de compilar:
+5) — no hace falta crear ningún target a mano. Solo dos cosas antes de compilar:
 
 1. Cambia el App Group de ejemplo `group.com.tunombre.financetracker` por el tuyo
    propio en dos sitios: `project.yml` (dos apariciones, bajo `entitlements` de cada
    target) y `Services/SharedDataStore.swift` (constante `appGroupID`). Debes haberlo
-   creado antes en developer.apple.com → **Identifiers → App Groups → +**.
-2. Vuelve a lanzar el workflow correspondiente (sección 2 o 3) para que se recompile
-   con el App Group correcto.
+   creado antes en developer.apple.com → **Identifiers → App Groups → +** (necesita
+   cuenta de Developer Program; si vas por la vía gratuita de sideloading sin esa
+   cuenta, deja el App Group tal cual — funcionará igual dentro del mismo dispositivo,
+   solo no podrás crear un grupo con tu propio identificador reservado).
+2. Vuelve a lanzar el workflow correspondiente (sección 2, 3 o 4) para que se
+   recompile con el App Group correcto.
 
 Para añadirlo en el iPhone: bloquea la pantalla → mantén pulsado → **Personalizar →
 Bloqueo** → toca los widgets bajo la hora → **+** → busca "FinanceTracker" → elige el
 tamaño (circular, rectangular o inline) → **Listo**. Tócalo: debe abrir la app
 directamente sobre el formulario de añadir gasto.
 
-## 7. Publicar en la App Store (la parte de aprender el proceso)
+## 8. Publicar en la App Store (aquí sí hace falta la cuenta de pago, sin excepción)
 
-Una vez que ya has probado la app en TestFlight (sección 3) y estás contento con ella:
+Esta es la única parte del proyecto que Apple no permite hacer gratis bajo ningún
+concepto: para que la app aparezca en la App Store y cualquiera pueda descargarla,
+exige sí o sí estar dado de alta en el Apple Developer Program (99 €/año). Ni
+sideloading ni ningún otro atajo la sustituyen aquí — es la revisión y distribución
+pública de Apple, no un problema técnico que se pueda rodear.
+
+Una vez que ya has probado la app (sideloading o TestFlight, secciones 3-4) y estás
+contento con ella:
 
 1. **Ficha de la App Store**: en App Store Connect, sobre la misma app que creaste en
-   la sección 3, rellena descripción, capturas de pantalla (puedes generarlas desde
-   TestFlight en tu iPhone con captura de pantalla normal), icono de 1024×1024,
+   la sección 4, rellena descripción, capturas de pantalla (puedes generarlas
+   directamente desde el iPhone con captura de pantalla normal), icono de 1024×1024,
    categoría (Finanzas), y la **App Privacy** (nutrition label): como todos los datos
    se quedan en el dispositivo (SwiftData local, sin backend ni analíticas), declaras
    que **no se recopilan datos**.
@@ -219,9 +284,9 @@ Una vez que ya has probado la app en TestFlight (sección 3) y estás contento c
 
 Cada nueva versión que quieras subir: cambia el `CFBundleShortVersionString` /
 `CURRENT_PROJECT_VERSION` que quieras en `project.yml`, haz push, y vuelve a lanzar el
-workflow "Archivar y subir a TestFlight" (sección 3, paso 6).
+workflow "Archivar y subir a TestFlight" (sección 4, paso 6).
 
-## 8. Si en algún momento consigues acceso a un Mac
+## 9. Si en algún momento consigues acceso a un Mac
 
 Todo lo anterior sigue funcionando igual (GitHub Actions no deja de ser útil por tener
 Mac), pero si quieres además abrir el proyecto en Xcode con interfaz gráfica —
@@ -234,12 +299,13 @@ desde el propio Android):
    `FinanceTracker.xcodeproj` localmente, idéntico al que genera CI.
 3. Ábrelo con `open FinanceTracker.xcodeproj`.
 4. En el target `FinanceTracker` → **Signing & Capabilities**, cambia el **Team** a tu
-   Apple ID para poder ejecutar en un iPhone conectado por cable.
+   Apple ID para poder ejecutar en un iPhone conectado por cable (con un Apple ID
+   gratis basta para esto, sin Developer Program, igual que el sideloading).
 
 No hace falta crear el proyecto a mano ni arrastrar carpetas: `project.yml` es la
 única fuente de verdad, tanto si lo genera CI como si lo generas tú en un Mac.
 
-## 9. Ideas para ampliar más adelante
+## 10. Ideas para ampliar más adelante
 
 - **Widget en Control Center** (iOS 18+, `ControlWidget` en el mismo target de
   extensión) para añadir un gasto con un toque desde el Centro de Control.

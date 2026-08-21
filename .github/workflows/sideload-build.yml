@@ -1,0 +1,54 @@
+name: Generar .ipa para sideload (gratis, sin cuenta de pago)
+
+# Compila la app para iPhone real (no simulador) SIN firmar con ningún certificado de
+# Apple, y empaqueta el resultado en un .ipa descargable. Ese .ipa es justo lo que
+# necesitas para instalarlo con AltStore / SideStore usando tu Apple ID gratis (ver
+# README, sección 3) — no hace falta cuenta de Apple Developer Program ni Mac: estas
+# herramientas hacen la firma "gratuita" por ti a partir de este .ipa sin firmar.
+#
+# No sirve para subir a TestFlight ni a la App Store — para eso sí hace falta la cuenta
+# de pago y el workflow testflight.yml (ver README, sección 4).
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar el proyecto Xcode desde project.yml
+        working-directory: FinanceTrackerApp
+        run: xcodegen generate
+
+      - name: Compilar para iPhone real, sin firmar
+        working-directory: FinanceTrackerApp
+        run: |
+          xcodebuild build \
+            -project FinanceTracker.xcodeproj \
+            -scheme FinanceTracker \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Empaquetar en .ipa
+        working-directory: FinanceTrackerApp
+        run: |
+          APP_PATH="build/DerivedData/Build/Products/Release-iphoneos/FinanceTracker.app"
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
+          cd build && zip -qr FinanceTracker.ipa Payload
+
+      - name: Subir el .ipa como artefacto descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinanceTracker-sin-firmar
+          path: FinanceTrackerApp/build/FinanceTracker.ipa
+          retention-days: 14
