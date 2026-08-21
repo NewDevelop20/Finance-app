@@ -13,7 +13,7 @@ struct QuickAddWidget: Widget {
             QuickAddWidgetView(entry: entry)
         }
         .configurationDisplayName("Añadir gasto")
-        .description("Acceso rápido para apuntar un gasto y ver cuánto llevas gastado hoy.")
+        .description("Acceso rápido para apuntar un gasto.")
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
@@ -34,9 +34,18 @@ struct QuickAddWidgetView: View {
         case .accessoryRectangular:
             Button(intent: OpenQuickAddIntent()) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Hoy: \(currency(entry.snapshot?.todayTotal ?? 0))")
-                        .font(.headline)
-                        .lineLimit(1)
+                    // `entry.snapshot` solo llega a tener datos si el App Group está
+                    // activo (cuenta de pago, ver README sección 7). Sin él, se omite
+                    // la línea del total en vez de enseñar un "0,00 €" engañoso.
+                    if let total = entry.snapshot?.todayTotal {
+                        Text("Hoy: \(currency(total))")
+                            .font(.headline)
+                            .lineLimit(1)
+                    } else {
+                        Text("FinanceTracker")
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
                     Label("Añadir gasto", systemImage: "plus.circle.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -48,8 +57,13 @@ struct QuickAddWidgetView: View {
         case .accessoryInline:
             // Este tamaño no admite botones interactivos: el toque abre la app vía
             // widgetURL, y FinanceTrackerApp.onOpenURL abre el formulario al vuelo.
-            Text("Hoy \(currency(entry.snapshot?.todayTotal ?? 0)) · Toca para añadir")
-                .widgetURL(URL(string: "financetracker://quickadd"))
+            if let total = entry.snapshot?.todayTotal {
+                Text("Hoy \(currency(total)) · Toca para añadir")
+                    .widgetURL(URL(string: "financetracker://quickadd"))
+            } else {
+                Text("Toca para añadir un gasto")
+                    .widgetURL(URL(string: "financetracker://quickadd"))
+            }
 
         default:
             EmptyView()

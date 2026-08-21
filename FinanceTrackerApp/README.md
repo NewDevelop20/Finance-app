@@ -26,8 +26,9 @@ noche a las 23:00.
   App Intents (`OpenQuickAddIntent`, `OpenQuickAddCashIntent`, `LogExpenseIntent`)
   pensados para colgar del botón de Acción, de un gesto Back Tap o de Siri.
 - **Widget de pantalla de bloqueo**: en tamaño circular y rectangular es un botón que
-  abre el formulario de alta al instante (y el rectangular enseña el gasto de hoy); en
-  tamaño inline enseña el gasto de hoy y, al tocarlo, abre el mismo formulario.
+  abre el formulario de alta al instante; en tamaño inline, tocarlo abre el mismo
+  formulario. Con cuenta de Apple Developer de pago, el rectangular y el inline
+  enseñan además el gasto de hoy (ver sección 7 sobre por qué no en la vía gratuita).
 
 ## Por qué no hay "detección automática" del pago con tarjeta
 
@@ -206,10 +207,13 @@ no hay que tocar nada a mano en Xcode:
 - **`BGTaskSchedulerPermittedIdentifiers`** con `com.financetracker.refreshSummary`
   (si cambias el identificador en `BackgroundTaskManager.swift`, cámbialo también en
   `project.yml`).
-- **App Groups** (`group.com.tunombre.financetracker`) en la app y en el widget, para
-  que compartan el gasto de hoy vía `SharedDataStore`.
 - **URL Scheme `financetracker://`**, usada por el widget en tamaño inline.
 - El **NSExtensionPointIdentifier** del widget (`com.apple.widgetkit-extension`).
+
+A propósito **no** se declara la capacidad App Groups: las cuentas gratuitas de Apple
+(la que usa el sideloading, sección 3) no la admiten, y sin ella la firma fallaría.
+Ver sección 7 para qué implica esto en el widget y cómo activarla si algún día pagas
+la cuenta de Developer.
 
 Las notificaciones locales no necesitan ninguna entrada de Info.plist: se piden en
 tiempo de ejecución (`NotificationManager.requestAuthorizationIfNeeded()`). Acepta el
@@ -237,18 +241,24 @@ requiere Xcode ni Mac en ningún momento.
 
 ## 7. Activar el widget de pantalla de bloqueo
 
-El target del widget y su App Group ya vienen configurados en `project.yml` (sección
-5) — no hace falta crear ningún target a mano. Solo dos cosas antes de compilar:
+El target del widget ya viene configurado en `project.yml` — no hace falta crear
+ningún target a mano ni tocar nada antes de compilar.
 
-1. Cambia el App Group de ejemplo `group.com.tunombre.financetracker` por el tuyo
-   propio en dos sitios: `project.yml` (dos apariciones, bajo `entitlements` de cada
-   target) y `Services/SharedDataStore.swift` (constante `appGroupID`). Debes haberlo
-   creado antes en developer.apple.com → **Identifiers → App Groups → +** (necesita
-   cuenta de Developer Program; si vas por la vía gratuita de sideloading sin esa
-   cuenta, deja el App Group tal cual — funcionará igual dentro del mismo dispositivo,
-   solo no podrás crear un grupo con tu propio identificador reservado).
-2. Vuelve a lanzar el workflow correspondiente (sección 2, 3 o 4) para que se
-   recompile con el App Group correcto.
+**Con la vía gratuita (sideloading), el widget funciona como botón de acceso
+rápido pero sin enseñar "hoy has gastado X€":** las cuentas de Apple gratuitas
+(Personal Team, la que usan AltStore/SideStore) no admiten la capacidad "App Groups",
+que es la que necesitaría el widget para leer ese dato de la app. Por eso
+`project.yml` no la declara — así la firma gratuita funciona sin errores — y el
+widget (`Widgets/QuickAddWidget.swift`) está hecho para no enseñar un "0,00 €" falso
+en ese caso: simplemente muestra "Añadir gasto" / "FinanceTracker". Sigue abriendo el
+formulario al instante, que era el objetivo; solo pierdes ese dato extra en pantalla.
+
+Si en algún momento das el paso a Apple Developer Program (sección 8), puedes
+recuperarlo: añade de vuelta el bloque `entitlements` con
+`com.apple.security.application-groups: [group.tu-id]` en ambos targets de
+`project.yml`, pon el mismo identificador en `Services/SharedDataStore.swift`
+(constante `appGroupID`), créalo en developer.apple.com → **Identifiers → App Groups
+→ +**, y volverá a mostrar el total solo, sin tocar el resto del código.
 
 Para añadirlo en el iPhone: bloquea la pantalla → mantén pulsado → **Personalizar →
 Bloqueo** → toca los widgets bajo la hora → **+** → busca "FinanceTracker" → elige el

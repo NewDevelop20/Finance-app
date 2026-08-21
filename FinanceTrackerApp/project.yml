@@ -24,11 +24,9 @@ targets:
       - path: Services
       - path: Intents
       - path: Views
-    entitlements:
-      path: FinanceTracker.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.com.tunombre.financetracker
+    # Sin entitlements a propósito: la firma gratuita de Apple (Personal Team, la que
+    # usan AltStore/SideStore) no admite la capacidad "App Groups". Ver
+    # Services/SharedDataStore.swift y el README, sección 7, para el porqué.
     info:
       path: Info.plist
       properties:
@@ -60,11 +58,9 @@ targets:
       - path: App/AppState.swift
       - path: Intents/QuickAddIntents.swift
       - path: Services/SharedDataStore.swift
-    entitlements:
-      path: FinanceTrackerWidget.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.com.tunombre.financetracker
+    # Mismo motivo que en el target de la app: sin App Groups, para que la firma
+    # gratuita funcione. El widget sigue siendo un botón de acceso rápido plenamente
+    # funcional; solo pierde el "hoy has gastado X€" en pantalla (ver SharedDataStore).
     info:
       path: WidgetInfo.plist
       properties:

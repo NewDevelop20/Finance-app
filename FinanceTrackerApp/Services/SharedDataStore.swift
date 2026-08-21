@@ -3,11 +3,16 @@ import Foundation
 /// Puente de datos entre la app y el widget de pantalla de bloqueo, vía App Group.
 /// No depende de SwiftData ni de ningún otro tipo del target principal a propósito:
 /// este archivo se comparte tal cual con el target del widget (ver README).
+///
+/// Con firma gratuita (Personal Team, AltStore/SideStore) esto no hace nada útil a
+/// propósito: `project.yml` no declara la capacidad "App Groups" porque las cuentas
+/// gratuitas de Apple no la admiten, así que `UserDefaults(suiteName:)` no consigue
+/// abrir un contenedor compartido real y `save`/`load` se convierten en no-ops
+/// silenciosos (sin crashear). El widget ya está preparado para ese caso — ver
+/// `Widgets/QuickAddWidget.swift`, que omite el total en vez de enseñar "0,00 €".
+/// Si más adelante tienes cuenta de Apple Developer Program, añade la capacidad
+/// App Groups en `project.yml` (ver comentarios ahí) y esto empieza a funcionar solo.
 enum SharedDataStore {
-    /// Debes crear este App Group en tu cuenta de Apple Developer (Certificates,
-    /// Identifiers & Profiles → Identifiers → App Groups) y usar el mismo identificador
-    /// aquí, en las Capabilities del target de la app y en las del target del widget.
-    /// Ver README, sección "Widget de pantalla de bloqueo".
     static let appGroupID = "group.com.tunombre.financetracker"
 
     private static let summaryKey = "dailySummarySnapshot"
